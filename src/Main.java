@@ -360,8 +360,10 @@ public class Main {
 
                         int c = bytes.get((bitOffset) / 8);
                         usedCodes.add(c);
-                        currentCodeValue = dictionary.get(c);
-                        indices.add(currentCodeValue.get(0));
+                        //currentCodeValue = dictionary.get(c);
+                        //indices.add(currentCodeValue.get(0));
+                        previousCodeValue = new ArrayList<>();
+                        previousCodeValue.addAll(dictionary.get(c));
 
                         // currentCodeValue = new ArrayList<>();
                         //currentCodeValue.add((int) Math.pow(2, 8) - 1);
