@@ -16,6 +16,9 @@ public class Main {
     private int packed;
     private int amountOfColorTableEntries;
 
+    private int width;
+    private int height;
+
     private Main() throws IOException {
         File file = new File("hamburger.gif");
         data = Files.readAllBytes(file.toPath());
@@ -102,7 +105,14 @@ public class Main {
 
         int applicationDataSize = readByte(); // size of coming sub blocks in bytes 3C
         boolean lastSubBlockReached = applicationDataSize == 0;
-        int subBlockDataCount = 0;
+        while (!(lastSubBlockReached)) {
+            for (int i = 0; i < applicationDataSize; i++)
+                readByte();
+            applicationDataSize = readByte();
+            lastSubBlockReached = applicationDataSize == 0;
+        }
+
+        /*int subBlockDataCount = 0;
         while (!lastSubBlockReached) {
             int amountOfBytesInThisSubBlock = readByte();
             subBlockDataCount++;
@@ -116,9 +126,9 @@ public class Main {
             }
             if (subBlockDataCount == applicationDataSize)
                 lastSubBlockReached = true;
-        }
+        }*/
 
-        int terminator = readByte();
+        // int terminator = readByte();
     }
 
     private void readGraphicsControlExtensionBlock() {
@@ -145,8 +155,8 @@ public class Main {
     private void readImageDescriptor() {
         int left = readWord();
         int top = readWord();
-        int width = readWord();
-        int height = readWord();
+        width = readWord();
+        height = readWord();
         int packed = readByte();
         int localColorTableFlag = packed & 0b1;
         int interlaceFlag = (packed & 0b10) >> 1;
@@ -173,7 +183,7 @@ public class Main {
     }
 
     private void getImageData() {
-        readByte();
+        int codeLength = readByte();
         boolean end = false;
         List<Integer> bytes = new ArrayList<>();
         do {
@@ -186,20 +196,20 @@ public class Main {
             }
         } while (!end);
 
-        List<Integer> decompressed = new ArrayList<>(decompress(bytes));
+        List<Integer> decompressed = new ArrayList<>(decompress(bytes, codeLength));
 
-        BufferedImage image = new BufferedImage(500, 375, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < 375; y++) {
-            for (int x = 0; x < 500; x++) {
-                if (y * 500 + x < decompressed.size()) {
-                    int rgb = decompressed.get(y * 500 + x);
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (y * width + x < decompressed.size()) {
+                    int rgb = decompressed.get(y * width + x);
                     image.setRGB(x, y, rgb);
                 }
             }
         }
 
         try {
-            ImageIO.write(image, "PNG", new File("test2.png"));
+            ImageIO.write(image, "PNG", new File("test.png"));
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -223,167 +233,236 @@ public class Main {
 
     int resetted = -1;
 
-    private List<Integer> decompress(List<Integer> bytes) {
-        int code = bytes.get(1);
+    private int getCode(List<Integer> bytes, int bitOffset, int bitsToRead) {
+        int code = -3;
+        if (bitsToRead == 5) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = (first & 0b00011111);
+            else if (mod == 1)
+                code = ((first & 0b00111110) >> 1);
+            else if (mod == 2)
+                code = ((first & 0b01111100) >> 2);
+            else if (mod == 3)
+                code = ((first & 0b11111000) >> 3);
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00000001) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b00000011) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b00000111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b00001111) << 1));
+        } else if (bitsToRead == 6) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = (first & 0b00111111);
+            else if (mod == 1)
+                code = ((first & 0b01111110) >> 1);
+            else if (mod == 2)
+                code = ((first & 0b11111100) >> 2);
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00000001) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00000011) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b00000111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b00001111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b00011111) << 1));
+        } else if (bitsToRead == 7) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = (first & 0b01111111);
+            else if (mod == 1)
+                code = ((first & 0b11111110) >> 1);
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00000001) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00000011) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00000111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b00001111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b00011111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b00111111) << 1));
+        } else if (bitsToRead == 8) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = (first & 0b11111111);
+            else if (mod == 1)
+                code = (((first & 0b11111110) >> 1) | ((second & 0b00000001) << 7));
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00000011) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00000111) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00001111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b00011111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b00111111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b01111111) << 1));
+        } else if (bitsToRead == 9) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = ((first & 0b11111111) | ((second & 0b00000001) << 8));
+            else if (mod == 1)
+                code = (((first & 0b11111110) >> 1) | ((second & 0b00000011) << 7));
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00000111) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00001111) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00011111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b00111111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b01111111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1));
+        } else if (bitsToRead == 10) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int third = bytes.get((bitOffset / 8) + 2);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = ((first & 0b11111111) | ((second & 0b00000011) << 8));
+            else if (mod == 1)
+                code = (((first & 0b11111110) >> 1) | ((second & 0b00000111) << 7));
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00001111) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00011111) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b00111111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b01111111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000001) << 9));
+        } else if (bitsToRead == 11) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int third = bytes.get((bitOffset / 8) + 2);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = ((first & 0b11111111) | ((second & 0b00000111) << 8));
+            else if (mod == 1)
+                code = (((first & 0b11111110) >> 1) | ((second & 0b00001111) << 7));
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00011111) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b00111111) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b01111111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b11111111) << 3));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2) | ((third & 0b00000001) << 10));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000011) << 9));
+        } else if (bitsToRead == 12) {
+            int first = bytes.get(bitOffset / 8);
+            int second = bytes.get((bitOffset / 8) + 1);
+            int third = 0;
+            if (bytes.size() > (bitOffset / 8) + 2)
+                third = bytes.get((bitOffset / 8) + 2);
+            int mod = bitOffset % 8;
+            if (mod == 0)
+                code = ((first & 0b11111111) | ((second & 0b00001111) << 8));
+            else if (mod == 1)
+                code = (((first & 0b11111110) >> 1) | ((second & 0b00011111) << 7));
+            else if (mod == 2)
+                code = (((first & 0b11111100) >> 2) | ((second & 0b00111111) << 6));
+            else if (mod == 3)
+                code = (((first & 0b11111000) >> 3) | ((second & 0b01111111) << 5));
+            else if (mod == 4)
+                code = (((first & 0b11110000) >> 4) | ((second & 0b11111111) << 4));
+            else if (mod == 5)
+                code = (((first & 0b11100000) >> 5) | ((second & 0b11111111) << 3) | ((third & 0b00000001) << 10));
+            else if (mod == 6)
+                code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2) | ((third & 0b00000011) << 9));
+            else if (mod == 7)
+                code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000111) << 8));
+        }
+        return code;
+    }
+
+    private List<Integer> decompress(List<Integer> bytes, int codeLength) {
+        bitsToRead = codeLength + 1;
+        bitOffset = bitsToRead; // first {bitsToRead} bits is a clear code
+        int code = getCode(bytes, bitOffset, bitsToRead);
         usedCodes.add(code);
-        List<Integer> previousCodeValue = new ArrayList<Integer>();
+
+        List<Integer> previousCodeValue = new ArrayList<>();
         List<Integer> currentCodeValue = dictionary.get(code);
 
         indices.add(currentCodeValue.get(0));
+        previousCodeValue = new ArrayList<>(currentCodeValue);
 
-        bitOffset = 16;
+        bitOffset = bitsToRead * 2;
 
-        try {
-            for (int i = 2; i < bytes.size(); i++) {
-                if (bitsToRead == 8) {
-                    code = bytes.get(bitOffset / 8);
-                    if (code == 129 || code == 128)
-                        System.out.println("hi");
-                } else if (bitsToRead == 9) {
-                    int first = bytes.get(bitOffset / 8);
-                    int second = bytes.get((bitOffset / 8) + 1);
-                    int mod = bitOffset % 8;
-                    if (mod == 0)
-                        code = ((first & 0b11111111) | ((second & 0b00000001) << 8));
-                    else if (mod == 1)
-                        code = (((first & 0b11111110) >> 1) | ((second & 0b00000011) << 7));
-                    else if (mod == 2)
-                        code = (((first & 0b11111100) >> 2) | ((second & 0b00000111) << 6));
-                    else if (mod == 3)
-                        code = (((first & 0b11111000) >> 3) | ((second & 0b00001111) << 5));
-                    else if (mod == 4)
-                        code = (((first & 0b11110000) >> 4) | ((second & 0b00011111) << 4));
-                    else if (mod == 5)
-                        code = (((first & 0b11100000) >> 5) | ((second & 0b00111111) << 3));
-                    else if (mod == 6)
-                        code = (((first & 0b11000000) >> 6) | ((second & 0b01111111) << 2));
-                    else if (mod == 7)
-                        code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1));
-                    if (code == 129 || code == 128)
-                        System.out.println("hi");
-                } else if (bitsToRead == 10) {
-                    int first = bytes.get(bitOffset / 8);
-                    int second = bytes.get((bitOffset / 8) + 1);
-                    int third = bytes.get((bitOffset / 8) + 2);
-                    int mod = bitOffset % 8;
-                    if (mod == 0)
-                        code = ((first & 0b11111111) | ((second & 0b00000011) << 8));
-                    else if (mod == 1)
-                        code = (((first & 0b11111110) >> 1) | ((second & 0b00000111) << 7));
-                    else if (mod == 2)
-                        code = (((first & 0b11111100) >> 2) | ((second & 0b00001111) << 6));
-                    else if (mod == 3)
-                        code = (((first & 0b11111000) >> 3) | ((second & 0b00011111) << 5));
-                    else if (mod == 4)
-                        code = (((first & 0b11110000) >> 4) | ((second & 0b00111111) << 4));
-                    else if (mod == 5)
-                        code = (((first & 0b11100000) >> 5) | ((second & 0b01111111) << 3));
-                    else if (mod == 6)
-                        code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2));
-                    else if (mod == 7)
-                        code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000001) << 9));
-                    if (code == 129 || code == 128)
-                        System.out.println("hi");
-                } else if (bitsToRead == 11) {
-                    int first = bytes.get(bitOffset / 8);
-                    int second = bytes.get((bitOffset / 8) + 1);
-                    int third = bytes.get((bitOffset / 8) + 2);
-                    int mod = bitOffset % 8;
-                    if (mod == 0)
-                        code = ((first & 0b11111111) | ((second & 0b00000111) << 8));
-                    else if (mod == 1)
-                        code = (((first & 0b11111110) >> 1) | ((second & 0b00001111) << 7));
-                    else if (mod == 2)
-                        code = (((first & 0b11111100) >> 2) | ((second & 0b00011111) << 6));
-                    else if (mod == 3)
-                        code = (((first & 0b11111000) >> 3) | ((second & 0b00111111) << 5));
-                    else if (mod == 4)
-                        code = (((first & 0b11110000) >> 4) | ((second & 0b01111111) << 4));
-                    else if (mod == 5)
-                        code = (((first & 0b11100000) >> 5) | ((second & 0b11111111) << 3));
-                    else if (mod == 6)
-                        code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2) | ((third & 0b00000001) << 10));
-                    else if (mod == 7)
-                        code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000011) << 9));
-                    if (code == 129 || code == 128)
-                        System.out.println("hi");
-                } else if (bitsToRead == 12) {
-                    int first = bytes.get(bitOffset / 8);
-                    int second = bytes.get((bitOffset / 8) + 1);
-                    int third = 0;
-                    if (bytes.size() > (bitOffset / 8) + 2)
-                        bytes.get((bitOffset / 8) + 2);
-                    int mod = bitOffset % 8;
-                    if (mod == 0)
-                        code = ((first & 0b11111111) | ((second & 0b00001111) << 8));
-                    else if (mod == 1)
-                        code = (((first & 0b11111110) >> 1) | ((second & 0b00011111) << 7));
-                    else if (mod == 2)
-                        code = (((first & 0b11111100) >> 2) | ((second & 0b00111111) << 6));
-                    else if (mod == 3)
-                        code = (((first & 0b11111000) >> 3) | ((second & 0b01111111) << 5));
-                    else if (mod == 4)
-                        code = (((first & 0b11110000) >> 4) | ((second & 0b11111111) << 4));
-                    else if (mod == 5)
-                        code = (((first & 0b11100000) >> 5) | ((second & 0b11111111) << 3) | ((third & 0b00000001) << 10));
-                    else if (mod == 6)
-                        code = (((first & 0b11000000) >> 6) | ((second & 0b11111111) << 2) | ((third & 0b00000011) << 9));
-                    else if (mod == 7)
-                        code = (((first & 0b10000000) >> 7) | ((second & 0b11111111) << 1) | ((third & 0b00000111) << 8));
-                    if (code == 129 || code == 128) {
-                        bitsToRead = 8;
-                        bitOffset += 12;
-                        List<List<Integer>> newDictionary = new ArrayList<>();
-                        for (int j = 0; j < 130; j++)
-                            newDictionary.add(dictionary.get(j));
-                        dictionary = newDictionary;
-
-                        int c = bytes.get((bitOffset) / 8);
-                        usedCodes.add(c);
-                        currentCodeValue = dictionary.get(c);
-                        indices.add(currentCodeValue.get(0));
-                        previousCodeValue = new ArrayList<>();
-                        previousCodeValue.addAll(dictionary.get(c));
-                    }
-                }
-
+        boolean end = false;
+        while (!end) {
+            code = getCode(bytes, bitOffset, bitsToRead);
+            bitOffset += bitsToRead;
+            if (code == (Math.pow(2, codeLength))) {
+                bitsToRead = (codeLength + 1);
+                List<List<Integer>> newDictionary = new ArrayList<>();
+                for (int j = 0; j < Math.pow(2, codeLength) + 2; j++)
+                    newDictionary.add(dictionary.get(j));
+                dictionary = newDictionary;
+                int c = getCode(bytes, bitOffset, bitsToRead);
                 bitOffset += bitsToRead;
+                usedCodes.add(c);
+                currentCodeValue = dictionary.get(c);
+                indices.add(currentCodeValue.get(0));
+                previousCodeValue = new ArrayList<>(dictionary.get(c));
+            } else if (code == (Math.pow(2, codeLength) + 1))
+                end = true;
 
-                usedCodes.add(code);
+            usedCodes.add(code);
 
-                try {
+            if (code != (Math.pow(2, codeLength))) {
 
-                    if (code != 128) {
-
-                        if (dictionary.size() > code) {
-                            currentCodeValue = dictionary.get(code);
-                            indices.addAll(new ArrayList<>(currentCodeValue));
-                            int k = currentCodeValue.get(0);
-                            List<Integer> toAdd = new ArrayList<>(previousCodeValue);
-                            toAdd.add(k);
-                            dictionary.add(toAdd);
-                            if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
-                                bitsToRead++;
-                            previousCodeValue = new ArrayList<>(currentCodeValue);
-                        } else {
-                            int k = previousCodeValue.get(0);
-                            List<Integer> toAdd = new ArrayList<>(previousCodeValue);
-                            toAdd.add(k);
-                            indices.addAll(new ArrayList<>(toAdd));
-                            dictionary.add(new ArrayList<>(toAdd));
-                            if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
-                                bitsToRead++;
-                            previousCodeValue = new ArrayList<>(dictionary.get(code));
-                        }
-                    }
-                } catch (Exception e) {
-                    return indices;
+                if (dictionary.size() > code) {
+                    currentCodeValue = dictionary.get(code);
+                    indices.addAll(new ArrayList<>(currentCodeValue));
+                    int k = currentCodeValue.get(0);
+                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    toAdd.add(k);
+                    dictionary.add(toAdd);
+                    if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
+                        bitsToRead++;
+                    previousCodeValue = new ArrayList<>(currentCodeValue);
+                } else {
+                    int k = previousCodeValue.get(0);
+                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    toAdd.add(k);
+                    indices.addAll(new ArrayList<>(toAdd));
+                    dictionary.add(new ArrayList<>(toAdd));
+                    if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
+                        bitsToRead++;
+                    previousCodeValue = new ArrayList<>(dictionary.get(code));
                 }
             }
-        } catch (Exception ex) {
-            return indices;
         }
-
         return indices;
     }
 
