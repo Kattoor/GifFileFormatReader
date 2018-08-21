@@ -1,3 +1,4 @@
+import extensioninformation.ExtensionInformation;
 import header.GifHeader;
 import util.Buffer;
 
@@ -40,51 +41,10 @@ public class Main {
                     readBody();
                     break;
                 case 0x21:
-                    readExtensionInformation();
+                    new ExtensionInformation(data);
                     break;
             }
         }
-    }
-
-
-
-    private void readExtensionInformation() {
-        int nextByte = data.readByte();
-        switch (nextByte) {
-            case 0xF9:
-                readGraphicsControlExtensionBlock();
-                break;
-            case 0xFF:
-                readApplicationExtensionBlock();
-                break;
-        }
-    }
-
-    private void readApplicationExtensionBlock() {
-        int blockSize = data.readByte(); // 0B for applicationextensionblock
-        int[] identifier = {data.readByte(), data.readByte(), data.readByte(), data.readByte(), data.readByte(), data.readByte(), data.readByte(), data.readByte()};
-        int[] authentCode = {data.readByte(), data.readByte(), data.readByte()};
-
-        int applicationDataSize = data.readByte(); // size of coming sub blocks in bytes 3C
-        boolean lastSubBlockReached = applicationDataSize == 0;
-        while (!(lastSubBlockReached)) {
-            for (int i = 0; i < applicationDataSize; i++)
-                data.readByte();
-            applicationDataSize = data.readByte();
-            lastSubBlockReached = applicationDataSize == 0;
-        }
-    }
-
-    private void readGraphicsControlExtensionBlock() {
-        int blockSize = data.readByte();     // 04 for graphicscontrolextensionblock
-        int packed = data.readByte();
-        int transparentColorFlag = packed & 0b1;
-        int userInputFlag = (packed & 0b10) >> 1;
-        int disposalMethod = (packed & 0b11100) >> 2;
-        int reserved = (packed & 0b11100000) >> 5;
-        int delayTime = data.readWord();
-        int colorIndex = data.readByte();
-        int terminator = data.readByte();
     }
 
     private void readBody() {
