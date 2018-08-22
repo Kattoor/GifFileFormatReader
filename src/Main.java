@@ -5,6 +5,8 @@ import image.Image;
 import util.Buffer;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,24 +40,30 @@ public class Main {
         readExtensionsAndImages();
     }
 
+    private BufferedImage img;
+
     private void readExtensionsAndImages() {
         while (true) {
             int identificationByte = data.readByte();
             switch (identificationByte) {
                 case 0x2C:
-                    System.out.println("Pointer before reading image " + (images.size() + 1) + ": " + Integer.toHexString(data.getPointer()));
-                    images.add(new Image(data, dictionary));
-                    System.out.println("Pointer after reading image " + (images.size()) + ": " + Integer.toHexString(data.getPointer()));
+                    images.add(new Image(data, gifHeader.getHeader().getBackgroundColor(), dictionary));
                     try {
-                        ImageIO.write(images.get(images.size() - 1).getImageData().getBufferedImage(), "PNG", new File("frame-" + images.size() + ".png"));
+                        if (img == null) {
+                            img = images.get(images.size() - 1).getImageData().getBufferedImage();
+                            ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
+                        } else {
+                            Graphics g = img.getGraphics();
+                            Image image = images.get(images.size() - 1);
+                            g.drawImage(image.getImageData().getBufferedImage(), image.getLocalImageDescriptor().getLeft(), image.getLocalImageDescriptor().getTop(), image.getLocalImageDescriptor().getWidth(), image.getLocalImageDescriptor().getHeight(), null);
+                            ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                     break;
                 case 0x21:
-                    System.out.println("Pointer before reading extension " + (extensions.size() + 1) + ": " + Integer.toHexString(data.getPointer()));
                     extensions.add(new ExtensionInformation(data).getExtension());
-                    System.out.println("Pointer after reading extension " + (extensions.size()) + ": " + Integer.toHexString(data.getPointer()));
                     break;
             }
         }

@@ -3,20 +3,28 @@ package util;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class LWZDecompressor {
 
-    public static List<Integer> decompress(List<Integer> bytes, int codeLength, List<List<Integer>> dictionary) {
+    public static List<ColorAndIndex> decompress(List<Integer> bytes, int codeLength, List<List<Integer>> dict) {
         int bitsToRead = codeLength + 1;
         int bitOffset = bitsToRead;
 
-        dictionary = dictionary.subList(0, (int) Math.pow(2, codeLength) + 2);
+        dict = dict.subList(0, (int) Math.pow(2, codeLength) + 2);
+        List<List<ColorAndIndex>> dictionary = new ArrayList<>();
+        for (int i = 0; i < dict.size(); i++) {
+            List<ColorAndIndex> l = new ArrayList<>();
+            l.add(new ColorAndIndex(dict.get(i).get(0), i));
+            dictionary.add(l);
+        }
 
         int code = getCode(bytes, bitOffset, bitsToRead);
 
-        List<Integer> previousCodeValue;
-        List<Integer> currentCodeValue = dictionary.get(code);
+        List<ColorAndIndex> previousCodeValue;
+        List<ColorAndIndex> currentCodeValue = new ArrayList<>();
+        currentCodeValue.addAll(dictionary.get(code));
 
-        List<Integer> indices = new ArrayList<>();
+        List<ColorAndIndex> indices = new ArrayList<>();
 
         indices.add(currentCodeValue.get(0));
         previousCodeValue = new ArrayList<>(currentCodeValue);
@@ -29,25 +37,26 @@ public class LWZDecompressor {
             bitOffset += bitsToRead;
             if (code == (Math.pow(2, codeLength))) {
                 bitsToRead = (codeLength + 1);
-                List<List<Integer>> newDictionary = new ArrayList<>();
+                List<List<ColorAndIndex>> newDictionary = new ArrayList<>();
                 for (int j = 0; j < Math.pow(2, codeLength) + 2; j++)
                     newDictionary.add(dictionary.get(j));
                 dictionary = newDictionary;
                 int c = getCode(bytes, bitOffset, bitsToRead);
                 bitOffset += bitsToRead;
-                currentCodeValue = dictionary.get(c);
+                currentCodeValue = new ArrayList<>(dictionary.get(c));
                 indices.add(currentCodeValue.get(0));
                 previousCodeValue = new ArrayList<>(dictionary.get(c));
             } else if (code == (Math.pow(2, codeLength) + 1))
                 end = true;
 
             if (code != (Math.pow(2, codeLength))) {
-
                 if (dictionary.size() > code) {
-                    currentCodeValue = dictionary.get(code);
+                    currentCodeValue = new ArrayList<>(dictionary.get(code));
                     indices.addAll(new ArrayList<>(currentCodeValue));
-                    int k = currentCodeValue.get(0);
-                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    ColorAndIndex k = currentCodeValue.get(0);
+                    List<ColorAndIndex> toAdd = new ArrayList<>();
+                    for (ColorAndIndex colorAndIndex : previousCodeValue)
+                        toAdd.add(new ColorAndIndex(colorAndIndex.getColor(), colorAndIndex.getIndex()));
                     toAdd.add(k);
                     if (dictionary.size() != 4096)
                         dictionary.add(toAdd);
@@ -55,15 +64,20 @@ public class LWZDecompressor {
                         bitsToRead++;
                     previousCodeValue = new ArrayList<>(currentCodeValue);
                 } else {
-                    int k = previousCodeValue.get(0);
-                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    ColorAndIndex k = previousCodeValue.get(0);
+                    List<ColorAndIndex> toAdd = new ArrayList<>();
+                    for (ColorAndIndex colorAndIndex : previousCodeValue)
+                        toAdd.add(new ColorAndIndex(colorAndIndex.getColor(), colorAndIndex.getIndex()));
                     toAdd.add(k);
-                    indices.addAll(new ArrayList<>(toAdd));
+                    for (ColorAndIndex colorAndIndex : toAdd)
+                        indices.add(new ColorAndIndex(colorAndIndex.getColor(), colorAndIndex.getIndex()));
                     if (dictionary.size() != 4096)
                         dictionary.add(new ArrayList<>(toAdd));
                     if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
                         bitsToRead++;
-                    previousCodeValue = new ArrayList<>(dictionary.get(code));
+                    previousCodeValue = new ArrayList<>();
+                    for (ColorAndIndex colorAndIndex : dictionary.get(code))
+                        previousCodeValue.add(new ColorAndIndex(colorAndIndex.getColor(), colorAndIndex.getIndex()));
                 }
             }
         }

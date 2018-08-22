@@ -10,10 +10,10 @@ public class Image {
     private LocalColorTable localColorTable;
     private ImageData imageData;
 
-    public Image(Buffer data, List<List<Integer>> dictionary) {
+    public Image(Buffer data, int backgroundColorIndex, List<List<Integer>> dictionary) {
         localImageDescriptor = new LocalImageDescriptor(data);
         localColorTable = new LocalColorTable(data, localImageDescriptor.getAmountOfColorTableEntries());
-        imageData = new ImageData(data, localImageDescriptor.getWidth(), localImageDescriptor.getHeight(), dictionary);
+        imageData = new ImageData(data, localImageDescriptor.getWidth(), localImageDescriptor.getHeight(), backgroundColorIndex, 21, dictionary);
     }
 
     public LocalImageDescriptor getLocalImageDescriptor() {

@@ -22,4 +22,20 @@ public class GifHeader {
     public List<List<Integer>> getDictionary() {
         return globalColorTable.getDictionary();
     }
+
+    public Buffer getData() {
+        return data;
+    }
+
+    public Header getHeader() {
+        return header;
+    }
+
+    public LogicalScreenDescriptor getLogicalScreenDescriptor() {
+        return logicalScreenDescriptor;
+    }
+
+    public GlobalColorTable getGlobalColorTable() {
+        return globalColorTable;
+    }
 }

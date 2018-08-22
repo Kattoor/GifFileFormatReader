@@ -18,7 +18,6 @@ public class LocalImageDescriptor {
         top = data.readWord();
         width = data.readWord();
         height = data.readWord();
-        System.out.println(left + ", " + top + ", " + width + ", " + height);
         packed = data.readByte();
         localColorTableFlag = packed & 0b1;
         interlaceFlag = (packed & 0b10) >> 1;
