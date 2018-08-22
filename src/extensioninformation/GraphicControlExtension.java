@@ -2,7 +2,7 @@ package extensioninformation;
 
 import util.Buffer;
 
-public class GraphicControlExtension {
+public class GraphicControlExtension implements Extension {
 
     private int blockSize;
     private int packed;

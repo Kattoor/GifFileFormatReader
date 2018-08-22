@@ -23,4 +23,12 @@ public class Buffer {
     public void incrementPointer(int incrementBy) {
         pointer += incrementBy;
     }
+
+    public byte[] getBytes() {
+        return bytes;
+    }
+
+    public int getPointer() {
+        return pointer;
+    }
 }

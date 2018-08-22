@@ -15,6 +15,7 @@ public class ImageData {
     private int width, height;
 
     private List<List<Integer>> dictionary;
+    private BufferedImage bufferedImage;
 
     public ImageData(Buffer data, int width, int height, List<List<Integer>> dictionary) {
         this.width = width;
@@ -39,26 +40,30 @@ public class ImageData {
 
         List<Integer> decompressed = new ArrayList<>(LWZDecompressor.decompress(bytes, codeLength, dictionary));
 
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 if (y * width + x < decompressed.size()) {
                     int rgb = decompressed.get(y * width + x);
-                    image.setRGB(x, y, rgb);
+                    bufferedImage.setRGB(x, y, rgb);
                 }
             }
         }
+    }
 
-        try {
-            ImageIO.write(image, "PNG", new File("test.png"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                Thread.sleep(10000000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public List<List<Integer>> getDictionary() {
+        return dictionary;
+    }
+
+    public BufferedImage getBufferedImage() {
+        return bufferedImage;
     }
 }

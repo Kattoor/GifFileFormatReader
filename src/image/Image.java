@@ -15,4 +15,16 @@ public class Image {
         localColorTable = new LocalColorTable(data, localImageDescriptor.getAmountOfColorTableEntries());
         imageData = new ImageData(data, localImageDescriptor.getWidth(), localImageDescriptor.getHeight(), dictionary);
     }
+
+    public LocalImageDescriptor getLocalImageDescriptor() {
+        return localImageDescriptor;
+    }
+
+    public LocalColorTable getLocalColorTable() {
+        return localColorTable;
+    }
+
+    public ImageData getImageData() {
+        return imageData;
+    }
 }

@@ -8,6 +8,9 @@ public class LWZDecompressor {
     public static List<Integer> decompress(List<Integer> bytes, int codeLength, List<List<Integer>> dictionary) {
         int bitsToRead = codeLength + 1;
         int bitOffset = bitsToRead;
+
+        dictionary = dictionary.subList(0, (int) Math.pow(2, codeLength) + 2);
+
         int code = getCode(bytes, bitOffset, bitsToRead);
 
         List<Integer> previousCodeValue;
@@ -21,51 +24,50 @@ public class LWZDecompressor {
         bitOffset = bitsToRead * 2;
 
         boolean end = false;
-        try {
-            while (!end) {
-                code = getCode(bytes, bitOffset, bitsToRead);
+        while (!end) {
+            code = getCode(bytes, bitOffset, bitsToRead);
+            bitOffset += bitsToRead;
+            if (code == (Math.pow(2, codeLength))) {
+                bitsToRead = (codeLength + 1);
+                List<List<Integer>> newDictionary = new ArrayList<>();
+                for (int j = 0; j < Math.pow(2, codeLength) + 2; j++)
+                    newDictionary.add(dictionary.get(j));
+                dictionary = newDictionary;
+                int c = getCode(bytes, bitOffset, bitsToRead);
                 bitOffset += bitsToRead;
-                if (code == (Math.pow(2, codeLength))) {
-                    bitsToRead = (codeLength + 1);
-                    List<List<Integer>> newDictionary = new ArrayList<>();
-                    for (int j = 0; j < Math.pow(2, codeLength) + 2; j++)
-                        newDictionary.add(dictionary.get(j));
-                    dictionary = newDictionary;
-                    int c = getCode(bytes, bitOffset, bitsToRead);
-                    bitOffset += bitsToRead;
-                    currentCodeValue = dictionary.get(c);
-                    indices.add(currentCodeValue.get(0));
-                    previousCodeValue = new ArrayList<>(dictionary.get(c));
-                } else if (code == (Math.pow(2, codeLength) + 1))
-                    end = true;
+                currentCodeValue = dictionary.get(c);
+                indices.add(currentCodeValue.get(0));
+                previousCodeValue = new ArrayList<>(dictionary.get(c));
+            } else if (code == (Math.pow(2, codeLength) + 1))
+                end = true;
 
-                if (code != (Math.pow(2, codeLength))) {
+            if (code != (Math.pow(2, codeLength))) {
 
-                    if (dictionary.size() > code) {
-                        currentCodeValue = dictionary.get(code);
-                        indices.addAll(new ArrayList<>(currentCodeValue));
-                        int k = currentCodeValue.get(0);
-                        List<Integer> toAdd = new ArrayList<>(previousCodeValue);
-                        toAdd.add(k);
+                if (dictionary.size() > code) {
+                    currentCodeValue = dictionary.get(code);
+                    indices.addAll(new ArrayList<>(currentCodeValue));
+                    int k = currentCodeValue.get(0);
+                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    toAdd.add(k);
+                    if (dictionary.size() != 4096)
                         dictionary.add(toAdd);
-                        if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
-                            bitsToRead++;
-                        previousCodeValue = new ArrayList<>(currentCodeValue);
-                    } else {
-                        int k = previousCodeValue.get(0);
-                        List<Integer> toAdd = new ArrayList<>(previousCodeValue);
-                        toAdd.add(k);
-                        indices.addAll(new ArrayList<>(toAdd));
+                    if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
+                        bitsToRead++;
+                    previousCodeValue = new ArrayList<>(currentCodeValue);
+                } else {
+                    int k = previousCodeValue.get(0);
+                    List<Integer> toAdd = new ArrayList<>(previousCodeValue);
+                    toAdd.add(k);
+                    indices.addAll(new ArrayList<>(toAdd));
+                    if (dictionary.size() != 4096)
                         dictionary.add(new ArrayList<>(toAdd));
-                        if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
-                            bitsToRead++;
-                        previousCodeValue = new ArrayList<>(dictionary.get(code));
-                    }
+                    if (dictionary.size() == Math.pow(2, bitsToRead) && bitsToRead < 12)
+                        bitsToRead++;
+                    previousCodeValue = new ArrayList<>(dictionary.get(code));
                 }
             }
-        } catch (Exception e) {
-            return indices;
         }
+
         return indices;
     }
 

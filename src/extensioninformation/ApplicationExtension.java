@@ -2,7 +2,7 @@ package extensioninformation;
 
 import util.Buffer;
 
-public class ApplicationExtension {
+public class ApplicationExtension implements Extension {
 
     private int[] identifier;
     private int[] authCode;
