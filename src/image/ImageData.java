@@ -1,14 +1,11 @@
 package image;
 
+import extensioninformation.GraphicControlExtension;
 import util.Buffer;
 import util.ColorAndIndex;
 import util.LWZDecompressor;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,16 +13,16 @@ public class ImageData {
 
     private int width, height;
     private int backgroundColorIndex;
-    private int transparencyIndex;
+    private GraphicControlExtension graphicControlExtension;
 
     private List<List<Integer>> dictionary;
     private BufferedImage bufferedImage;
 
-    public ImageData(Buffer data, int width, int height, int backgroundColorIndex, int transparencyIndex, List<List<Integer>> dictionary) {
+    public ImageData(Buffer data, int width, int height, int backgroundColorIndex, GraphicControlExtension graphicControlExtension, List<List<Integer>> dictionary) {
         this.width = width;
         this.height = height;
         this.backgroundColorIndex = backgroundColorIndex;
-        this.transparencyIndex = transparencyIndex;
+        this.graphicControlExtension = graphicControlExtension;
         this.dictionary = dictionary;
         readImageData(data);
     }
@@ -52,7 +49,7 @@ public class ImageData {
             for (int x = 0; x < width; x++) {
                 if (y * width + x < decompressed.size()) {
                     ColorAndIndex colorAndIndex = decompressed.get(y * width + x);
-                    if (colorAndIndex.getIndex() != 21)
+                    if (graphicControlExtension == null || graphicControlExtension.getTransparentColorFlag() == 0 || colorAndIndex.getIndex() != graphicControlExtension.getTransparentColorIndex())
                         bufferedImage.setRGB(x, y, colorAndIndex.getColor() | 0xff000000);
                 }
             }

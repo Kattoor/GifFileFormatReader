@@ -1,5 +1,6 @@
 import extensioninformation.Extension;
 import extensioninformation.ExtensionInformation;
+import extensioninformation.GraphicControlExtension;
 import header.GifHeader;
 import image.Image;
 import util.Buffer;
@@ -22,6 +23,7 @@ public class Main {
     private Buffer data;
 
     private GifHeader gifHeader;
+    private List<Object> components;
     private List<Extension> extensions;
     private List<Image> images;
 
@@ -34,6 +36,8 @@ public class Main {
 
         gifHeader = new GifHeader(data);
         dictionary = gifHeader.getDictionary();
+
+        components = new ArrayList<>();
         extensions = new ArrayList<>();
         images = new ArrayList<>();
 
@@ -42,28 +46,33 @@ public class Main {
 
     private BufferedImage img;
 
-    private void readExtensionsAndImages() {
+    private void readExtensionsAndImages() throws IOException {
         while (true) {
             int identificationByte = data.readByte();
             switch (identificationByte) {
                 case 0x2C:
-                    images.add(new Image(data, gifHeader.getHeader().getBackgroundColor(), dictionary));
-                    try {
-                        if (img == null) {
-                            img = images.get(images.size() - 1).getImageData().getBufferedImage();
-                            ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
-                        } else {
-                            Graphics g = img.getGraphics();
-                            Image image = images.get(images.size() - 1);
-                            g.drawImage(image.getImageData().getBufferedImage(), image.getLocalImageDescriptor().getLeft(), image.getLocalImageDescriptor().getTop(), image.getLocalImageDescriptor().getWidth(), image.getLocalImageDescriptor().getHeight(), null);
-                            ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    Object previousComponent = components.get(components.size() - 1);
+                    GraphicControlExtension gcExtension = previousComponent instanceof GraphicControlExtension ? (GraphicControlExtension) previousComponent : null;
+
+                    Image currentImage = new Image(data, gifHeader.getHeader().getBackgroundColor(), gcExtension, dictionary);
+
+                    components.add(currentImage);
+                    images.add(currentImage);
+
+                    if (img == null) {
+                        img = currentImage.getImageData().getBufferedImage();
+                        ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
+                    } else {
+                        Graphics g = img.getGraphics();
+                        Image image = images.get(images.size() - 1);
+                        g.drawImage(image.getImageData().getBufferedImage(), image.getLocalImageDescriptor().getLeft(), image.getLocalImageDescriptor().getTop(), image.getLocalImageDescriptor().getWidth(), image.getLocalImageDescriptor().getHeight(), null);
+                        ImageIO.write(img, "PNG", new File("frame-" + images.size() + ".png"));
                     }
                     break;
                 case 0x21:
-                    extensions.add(new ExtensionInformation(data).getExtension());
+                    Extension extension = new ExtensionInformation(data).getExtension();
+                    components.add(extension);
+                    extensions.add(extension);
                     break;
             }
         }

@@ -11,7 +11,7 @@ public class GraphicControlExtension implements Extension {
     private int disposalMethod;
     private int reserved;
     private int delayTime;
-    private int colorIndex;
+    private int transparentColorIndex;
     private int terminator;
 
     public GraphicControlExtension(Buffer data) {
@@ -22,7 +22,7 @@ public class GraphicControlExtension implements Extension {
         disposalMethod = (packed & 0b11100) >> 2;
         reserved = (packed & 0b11100000) >> 5;
         delayTime = data.readWord();
-        colorIndex = data.readByte();
+        transparentColorIndex = data.readByte();
         terminator = data.readByte();
     }
 
@@ -54,8 +54,8 @@ public class GraphicControlExtension implements Extension {
         return delayTime;
     }
 
-    public int getColorIndex() {
-        return colorIndex;
+    public int getTransparentColorIndex() {
+        return transparentColorIndex;
     }
 
     public int getTerminator() {
