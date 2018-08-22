@@ -47,7 +47,7 @@ public class Main {
     private BufferedImage img;
 
     private void readExtensionsAndImages() throws IOException {
-        while (true) {
+        while (data.getPointer() < 336282) {
             int identificationByte = data.readByte();
             switch (identificationByte) {
                 case 0x2C:

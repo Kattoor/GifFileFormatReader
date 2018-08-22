@@ -10,8 +10,8 @@ public class Buffer {
     }
 
     public int readByte() {
-        int packed = bytes[pointer++];
-        return packed & 0xFF;
+        int b = bytes[pointer++];
+        return b & 0xFF;
     }
 
     public int readWord() {
